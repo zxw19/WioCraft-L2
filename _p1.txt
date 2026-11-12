@@ -1,0 +1,33 @@
+*** Begin Patch
+*** Update File: src/game.cpp
+@@
+-static float s_mvx, s_mvz;
+-static bool s_mineDown, s_jumpTap, s_placeTap;
+-
+-// input state
+-static bool s_joyActive;
+-static float s_joyOX, s_joyOY, s_joyDX, s_joyDY;
+-static bool s_lookDown;
+-static float s_touchDownT, s_touchMoved;
+-static int s_lookPrevX, s_lookPrevY;
+-static bool s_jumpLatch;
+-static bool s_hotbarLatch;
+-static bool s_mineHold;
++static float s_mvx, s_mvz;
++static bool s_mineDown, s_jumpTap, s_placeTap;
++
++// ---- touch state ----------------------------------------------------------
++enum : uint8_t { RGN_NONE = 0, RGN_JOY, RGN_LOOK, RGN_JUMP, RGN_BAR };
++static uint8_t s_rgn = RGN_NONE;
++static bool s_fingerDown;
++static uint8_t s_lostFrames;
++static int s_downX, s_downY;
++static float s_joyOX, s_joyOY, s_joyDX, s_joyDY;
++static bool s_joyActive;
++static int s_lookPrevX, s_lookPrevY;
++static float s_touchDownT, s_touchMoved;
++static bool s_mineHold;
++static bool s_jumpLatch;
++static float s_hintT = 9.0f;
++static float s_nameT;
+*** End Patch

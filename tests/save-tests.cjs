@@ -1,0 +1,23 @@
+const fs=require('fs'),assert=require('assert').strict;
+(async()=>{
+ const {instance}=await WebAssembly.instantiate(fs.readFileSync('tests/save.wasm'),{}),w=instance.exports;
+ const bytes=()=>new Uint8Array(w.memory.buffer),view=()=>new DataView(w.memory.buffer);
+ const copyFile=(a,b)=>{let n=w.fileSize(a);bytes().copyWithin(w.filePtr(b),w.filePtr(a),w.filePtr(a)+n);w.setFileSize(b,n);};
+ w.reset();w.setEdits(2);assert(w.store()===1);assert(w.fileExists(0)===1);assert(w.load()===1);
+ assert.deepEqual(Array.from(bytes().slice(w.loadedPtr(),w.loadedPtr()+w.stateSize())),Array.from(bytes().slice(w.statePtr(),w.statePtr()+w.stateSize())));
+ assert(w.applications()===2 && w.loadedEditCount()===2);console.log('PASS WC11 inventory and edit roundtrip');
+ w.reset();w.oldFixture(0,2);assert(w.load()===1);for(let i=0;i<9;i++)assert(view().getUint16(w.loadedPtr()+32+i*2,true)===0);
+ assert(w.applications()===2);assert(w.store()===1);assert(view().getUint32(w.filePtr(0),true)===0x57433131);console.log('PASS WC10 migration defaults inventory to zero and writes WC11');
+ w.reset();w.setEdits(2);assert(w.store()===1);w.setFileSize(0,w.fileSize(0)-1);assert(w.load()===0);assert(w.applications()===0 && w.clearCount()===0);
+ console.log('PASS truncated file rejected before applying any edits');
+ w.reset();w.setEdits(2);assert(w.store()===1);bytes()[w.filePtr(0)+w.headerSize()+8+6]=255;assert(w.load()===0);assert(w.applications()===0 && w.clearCount()===0);
+ console.log('PASS invalid trailing edit rejected transactionally');
+ w.reset();w.setEdits(2);assert(w.store()===1);view().setUint32(w.filePtr(0)+8,0x7fc00000,true);assert(w.load()===0);assert(w.applications()===0);
+ view().setUint32(w.statePtr(),0x7fc00000,true);assert(w.store()===0);console.log('PASS NaN rejected with fast-math');
+ w.reset();w.setEdits(2);assert(w.store()===1);copyFile(0,1);bytes()[w.filePtr(0)]=0;assert(w.load()===1);assert(w.applications()===2);console.log('PASS corrupt primary falls back to complete backup');
+ w.reset();w.setEdits(2);assert(w.store()===1);const original=bytes().slice(w.filePtr(0),w.filePtr(0)+w.fileSize(0));w.failures(1,0);assert(w.store()===0);
+ assert(w.fileExists(0)===1);assert.deepEqual(bytes().slice(w.filePtr(0),w.filePtr(0)+w.fileSize(0)),original);assert(w.load()===1);
+ console.log('PASS failed final rename restores old primary');
+ w.reset();w.setEdits(2);assert(w.store()===1);w.failures(0,1);assert(w.store()===0);assert(w.fileExists(0)===1 && w.load()===1);console.log('PASS failed write keeps previous primary');
+ w.reset();w.setEdits(8192);assert(w.store()===1);assert(w.load()===1 && w.loadedEditCount()===8192);console.log('PASS legal 8192-edit maximum loads');
+})().catch(e=>{console.error(e);process.exitCode=1;});

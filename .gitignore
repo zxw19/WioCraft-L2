@@ -1,0 +1,7 @@
+.pio/
+__pycache__/
+*.pyc
+*.elf
+*.map
+logs/*.log
+snapshots/**/*.bin
