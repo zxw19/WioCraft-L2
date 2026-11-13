@@ -1,28 +1,46 @@
 # WioCraft — Wio Tracker L2 Pro
 
-一个跑在 **Seeed Wio Tracker L2 Pro**（ESP32-S3R8）上的体素生存小游戏：
-160x120 内部渲染、整数 2 倍放大到 320x240、全触摸操作、SD 卡存档。
+A small voxel survival game for the **Seeed Wio Tracker L2 Pro** (ESP32-S3R8):
+160x120 internal render with an integer 2x upscale to the 320x240 panel,
+touch-only controls, and SD card saves.
 
-![设备实拍](logs/release-v03-frame.png)
+**English** | [简体中文](README.zh-CN.md)
 
-## 硬件
+![On the device](logs/release-v03-frame.png)
+
+## Hardware
 
 | | |
 |---|---|
-| 主控 | ESP32-S3R8，16 MB QIO Flash + 8 MB OPI PSRAM |
-| 屏幕 | 320x240 NV3031B，QSPI |
-| 触摸 | GT911（电容，5 点） |
-| 音频 | ES8311 + PA |
-| 存储 | TF 卡（FAT32） |
-| 扩展 | TCA9535 IO 扩展器（屏复位、SD 检测、PA 使能等） |
+| MCU | ESP32-S3R8, 16 MB QIO flash + 8 MB OPI PSRAM |
+| Display | 320x240 NV3031B, QSPI |
+| Touch | GT911 capacitive, 5 points |
+| Audio | ES8311 codec + PA |
+| Storage | microSD (FAT32) |
+| Expander | TCA9535 (panel reset, SD detect, PA enable, ...) |
 
-## 构建
+## Install a prebuilt firmware
+
+Grab `WioCraft-L2-v0.3-merged.bin` from the
+[v0.3 release](https://github.com/zxw19/WioCraft-L2/releases) and flash it at offset 0x0:
+
+```powershell
+python -m esptool --chip esp32s3 --port COM83 -b 460800 write_flash 0x0 WioCraft-L2-v0.3-merged.bin
+```
+
+The merged image is 606,144 bytes. SHA256:
+
+```
+C8BD1A809D4A82D03583CA9E520A79286B3DA99F1327BD688499F090FF242B2E
+```
+
+## Build from source
 
 ```powershell
 pio run
 ```
 
-合并成单文件固件（bootloader + 分区表 + 应用）：
+Merge bootloader, partition table and application into one image:
 
 ```powershell
 python -m esptool --chip esp32s3 merge_bin -o WioCraft-merged.bin `
@@ -32,43 +50,34 @@ python -m esptool --chip esp32s3 merge_bin -o WioCraft-merged.bin `
   0x10000 .pio\build\wio-l2\firmware.bin
 ```
 
-烧录：
+## Controls
 
-```powershell
-python -m esptool --chip esp32s3 --port COM83 -b 460800 write_flash 0x0 WioCraft-merged.bin
-```
+- Stick, bottom left: move
+- Drag anywhere else: turn / look up and down
+- `DIG` (hold): mine
+- `PLACE`: place a block
+- `JUMP`: jump
+- `CRAFT`, top right: craft (log to planks)
+- `?`, top right corner: help
+- Hotbar along the bottom: pick an item
 
-预编译固件在 `releases/v0.3/WioCraft-merged.bin`（606,144 字节）：
-SHA256 `C8BD1A809D4A82D03583CA9E520A79286B3DA99F1327BD688499F090FF242B2E`。
+## Performance (v0.3, measured on hardware)
 
-## 操作
+- 21.7-22 fps in dense forest: sky 0.8 ms / world 32 ms / present 11.7 ms
+- RAM 30.5%, flash 17.2%
+- The frame is rendered at 160x120 and upscaled 2x; `present` is the bottleneck
 
-- 左下摇杆：移动
-- 其余区域拖动：转向 / 抬头低头
-- `DIG` 按住：挖
-- `PLACE`：放置
-- `JUMP`：跳
-- 右上 `CRAFT`：合成（原木 → 木板）
-- 右上 `?`：帮助
-- 底部快捷栏：选择物品
-
-## 性能（v0.3，实机）
-
-- 密林场景 21.7–22 fps：sky 0.8 ms / world 32 ms / present 11.7 ms
-- RAM 30.5%，Flash 17.2%
-- 画面 160x120 渲染后 2 倍放大；`present` 是当前的瓶颈
-
-## 目录
+## Repository layout
 
 ```
-src/            引擎与游戏（render / world / game / ui / input / save）
-releases/v0.3/  v0.3 的源码快照与预编译固件
-logs/           实机截图与串口日志
-tests/          主机侧回归（存档、布局、渲染）
-PROGRESS.md     逐版本开发记录与踩坑
+src/            engine and game (render / world / game / ui / input / save)
+releases/v0.3/  source snapshot and prebuilt firmware for v0.3
+logs/           device screenshots and serial logs
+tests/          host-side regression tests (save, layout, render)
+PROGRESS.md     per-version development notes (Chinese)
 ```
 
-## 已知限制
+## Known limitations
 
-- 真实 SD 卡持久化流程（保存 / 重启恢复 / 掉电）还没有插卡验证。
-- 帧率受 320x240 的 `present` 与 160x120 的射线遍历限制，密林约 22 fps。
+- The SD save path (save, reboot and restore, power loss) has not been tested with a real card yet.
+- Frame rate is limited by the 320x240 `present` and the 160x120 ray traversal; about 22 fps in forest.
